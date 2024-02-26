@@ -1,0 +1,8 @@
+version: '3'
+services:
+  meu_app:
+    build: ./app
+    ports:
+      - "8000:80"
+    environment:
+      - DATABASE_URL=postgresql://postgres:Subwoofer1!@estoque-raiz.cl8g6mie0ys4.us-east-1.rds.amazonaws.com:5432/alunos
