@@ -1,48 +1,65 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-import asyncpg
-import asyncio
-from typing import Optional
+from fastapi.responses import JSONResponse
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from fastapi.middleware.cors import CORSMiddleware
+
+DATABASE_URL = "postgresql://postgres:Subwoofer1!@estoque-raiz.cl8g6mie0ys4.us-east-1.rds.amazonaws.com:5432/AlunosPlurall"
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+class Aluno(Base):
+    __tablename__ = "alunos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    turma = Column(String)
+    matricula = Column(String, unique=True, index=True)
+    nome_completo = Column(String)
+    nome_usuario = Column(String)
+    senha = Column(String)
 
 app = FastAPI()
 
-# Modelo de dados para representar um aluno
-class Aluno(BaseModel):
-    turma: str
-    matricula: str
-    nome_completo: str
-    nome_usuario: str
-    senha: str
+origins = [
+    "http://localhost",
+    "http://localhost:5500",
+    "http://127.0.0.1",
+    "http://127.0.0.1:5500",
+]
 
-# Configurações do banco de dados
-DATABASE_URL = "postgresql://postgres:Subwoofer1!@estoque-raiz.cl8g6mie0ys4.us-east-1.rds.amazonaws.com:5432/alunos"
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
-# Função para conectar ao banco de dados
-async def connect_to_db():
-    return await asyncpg.connect(DATABASE_URL)
+def get_aluno_details(matricula_nome: str):
+    session = SessionLocal()
+    aluno = session.query(Aluno).filter(Aluno.nome_completo == matricula_nome).first()
+    session.close()
+    return aluno
 
-# Endpoint GET para obter nome de usuário e senha do aluno por matrícula ou nome
+def get_aluno_byCod(matricula_cod: str):
+    session = SessionLocal()
+    aluno = session.query(Aluno).filter(Aluno.matricula == matricula_cod).first()
+    session.close()
+    return aluno
+
 @app.get("/alunos/")
-async def get_aluno(matricula: Optional[str] = None, nome: Optional[str] = None):
-    if not matricula and not nome:
-        raise HTTPException(status_code=400, detail="É necessário fornecer a matrícula ou o nome do aluno")
-
-    async with connect_to_db() as connection:
-        if matricula:
-            query = "SELECT nome_usuario, senha FROM alunos WHERE matricula = $1"
-            aluno = await connection.fetchrow(query, matricula)
-            if aluno:
-                return {"nome_usuario": aluno['nome_usuario'], "senha": aluno['senha']}
-            else:
-                raise HTTPException(status_code=404, detail="Aluno não encontrado com esta matrícula")
-        elif nome:
-            query = "SELECT nome_usuario, senha FROM alunos WHERE LOWER(nome_completo) = $1"
-            aluno = await connection.fetchrow(query, nome.lower())
-            if aluno:
-                return {"nome_usuario": aluno['nome_usuario'], "senha": aluno['senha']}
-            else:
-                raise HTTPException(status_code=404, detail="Aluno não encontrado com este nome")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+async def get_aluno(matricula_nome: str):
+    aluno = get_aluno_details(matricula_nome)
+    if aluno is None:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    return JSONResponse(content={"nome_usuario": aluno.nome_usuario, "senha": aluno.senha}, headers={"Access-Control-Allow-Origin": "*"})
+    
+@app.get("/alunosCod/")
+async def get_aluno(matricula: str):
+    aluno = get_aluno_byCod(matricula)
+    if aluno is None:
+        raise HTTPException(status_code=404, detail="Aluno não encontrado")
+    return JSONResponse(content={"nome_usuario": aluno.nome_usuario, "senha": aluno.senha}, headers={"Access-Control-Allow-Origin": "*"})
