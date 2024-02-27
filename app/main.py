@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from fastapi.middleware.cors import CORSMiddleware
 
-DATABASE_URL = "postgresql://postgres:Subwoofer1!@estoque-raiz.cl8g6mie0ys4.us-east-1.rds.amazonaws.com:5432/AlunosPlurall"
+DATABASE_URL = " "
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
